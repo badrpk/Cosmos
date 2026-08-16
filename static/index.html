@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport"
+ content="width=device-width,initial-scale=1">
+
+<title>Cosmos — Shmry Control Plane</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+ margin:0;
+ background:#070b15;
+ color:#f4f7ff;
+ font-family:system-ui,sans-serif;
+}
+
+main{
+ width:min(1200px,calc(100% - 30px));
+ margin:auto;
+ padding:48px 0;
+}
+
+h1{
+ font-size:clamp(3rem,10vw,7rem);
+ margin:.2em 0;
+}
+
+.subtitle{
+ color:#9ba8c4;
+ font-size:1.2rem;
+}
+
+.panel{
+ background:#111a30;
+ border:1px solid #30436f;
+ border-radius:20px;
+ padding:22px;
+ margin:18px 0;
+}
+
+textarea{
+ width:100%;
+ min-height:150px;
+ background:#060a13;
+ color:white;
+ border:1px solid #3b4e78;
+ border-radius:14px;
+ padding:16px;
+ font:inherit;
+}
+
+button{
+ margin-top:12px;
+ border:0;
+ border-radius:12px;
+ padding:14px 22px;
+ font-weight:700;
+ cursor:pointer;
+}
+
+pre{
+ white-space:pre-wrap;
+ overflow:auto;
+ background:#050812;
+ padding:16px;
+ border-radius:14px;
+ min-height:100px;
+}
+
+.grid{
+ display:grid;
+ grid-template-columns:
+ repeat(auto-fit,minmax(190px,1fr));
+ gap:10px;
+}
+
+.repo{
+ background:#151f38;
+ border-radius:14px;
+ padding:14px;
+}
+
+.repo small{
+ display:block;
+ color:#8fa7cf;
+ margin-top:6px;
+}
+
+@media(max-width:600px){
+ main{padding:25px 0}
+}
+</style>
+</head>
+
+<body>
+<main>
+
+<h1>Cosmos</h1>
+
+<p class="subtitle">
+Control plane for the Shmry 32-repository ecosystem.
+Describe the output you want. Cosmos selects and coordinates
+the required capabilities.
+</p>
+
+<section class="panel">
+<h2>Input</h2>
+
+<textarea
+ id="request"
+ placeholder="Example: Build a responsive website, remember the result, verify it visually and produce an artifact manifest."
+></textarea>
+
+<button id="run">
+Execute
+</button>
+</section>
+
+<section class="panel">
+<h2>Execution result</h2>
+<pre id="result">No task submitted.</pre>
+</section>
+
+<section class="panel">
+<h2>32 peer repositories</h2>
+<div id="repos" class="grid"></div>
+</section>
+
+<script>
+const result = document.querySelector("#result");
+const repos = document.querySelector("#repos");
+
+async function loadRepos() {
+  const response = await fetch("/api/repos");
+  const data = await response.json();
+
+  repos.innerHTML = data.repositories
+    .map(repo => `
+      <article class="repo">
+        <strong>${repo.name}</strong>
+        <small>${repo.state}</small>
+        <small>${repo.capabilities.join(", ")}</small>
+      </article>
+    `)
+    .join("");
+}
+
+document.querySelector("#run")
+  .addEventListener("click", async () => {
+
+    const request =
+      document.querySelector("#request").value.trim();
+
+    if (!request) return;
+
+    result.textContent = "Executing...";
+
+    const response = await fetch(
+      "/api/request",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+        body: JSON.stringify({
+          request
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    result.textContent =
+      JSON.stringify(data, null, 2);
+  });
+
+loadRepos();
+</script>
+
+</main>
+</body>
+</html>

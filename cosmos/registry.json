@@ -1,0 +1,279 @@
+{
+  "schema": 1,
+  "peer_count": 32,
+  "repositories": [
+    {
+      "name": "android-apps",
+      "state": "LOCAL",
+      "head": "ec628526266123ad1cf3973cbb6bdd4feddc91e2",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "bijli",
+      "state": "LOCAL",
+      "head": "084cfdd461c7abd2e770e67ba67210aa2477a861",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "bijli.live",
+      "state": "LOCAL",
+      "head": "8dd8e57659866eba9e20ba053e53b0ae65cad8e9",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "cast",
+      "state": "LOCAL",
+      "head": "97ab9419c147076dab93b2297a21562db8737b77",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "darulsakina",
+      "state": "LOCAL",
+      "head": "2f80ec9b9271eb323f26c21d74811b8335217e62",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "huobz",
+      "state": "LOCAL",
+      "head": "120576fdc5bae65a649bcbacde234cd30070631a",
+      "capabilities": [
+        "delegated_huobzlang_implementation"
+      ]
+    },
+    {
+      "name": "huobz-ai-coder",
+      "state": "LOCAL",
+      "head": "cfe910c25529eff566c944871165ae966c975362",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "HuobzAi",
+      "state": "LOCAL",
+      "head": "69d4509d460ceca423bf7c75726fcabdb56936a8",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "HuobzAl",
+      "state": "LOCAL",
+      "head": "923b915e519eae8a1bde6ba358e81016b1af8ffb",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "HuobzEdge",
+      "state": "LOCAL",
+      "head": "275d76e7f94bb5067211d8776901bd21f4dcd2fa",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "HuobzLang",
+      "state": "LOCAL",
+      "head": "3452f8f261520c7d5149fa04d59289605cba80ad",
+      "capabilities": [
+        "language",
+        "compile",
+        "semantic_representation"
+      ]
+    },
+    {
+      "name": "khaana",
+      "state": "LOCAL",
+      "head": "7dd0726d426160e45a7a7677ec469281330df834",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "laiba-badar",
+      "state": "LOCAL",
+      "head": "1a2a1d41dfdee45d008d8e093fa252592a0c516f",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "laibabadar",
+      "state": "LOCAL",
+      "head": "9ab2ba0b468509c1efac4bed546407702d15d15a",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "laibabadar-app",
+      "state": "LOCAL",
+      "head": "8f6ec4048b0b8fcf9680b0e958967f3946976a6d",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "mypharma",
+      "state": "LOCAL",
+      "head": "f0a671e05d511931fc5c0c7dce377e366124a4bc",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "neuron",
+      "state": "LOCAL",
+      "head": "41abfd01a63be8e0a0bb866f269a1cfbd0e46018",
+      "capabilities": [
+        "neural_intelligence",
+        "signal"
+      ]
+    },
+    {
+      "name": "nifdu",
+      "state": "LOCAL",
+      "head": "50f9ff225e696325374c6ab79349b443f8bd357b",
+      "capabilities": [
+        "browser",
+        "render",
+        "visual_verify"
+      ]
+    },
+    {
+      "name": "nifdu-news-platform",
+      "state": "LOCAL",
+      "head": "9dea2a58057297dbf22af80b95f971438b418ba5",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "rangoons",
+      "state": "LOCAL",
+      "head": "44d4f9d26f245815b77b18838d7fd2c05b083c43",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "rangoons-core",
+      "state": "LOCAL",
+      "head": "a7201d26ed0d6f40d2bf95d1bdc9a4db35aa0b1e",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "rangoons-live",
+      "state": "LOCAL",
+      "head": "118ca4bed09527f6b0589a6f14360219940c1625",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "Rangoons-news-platform",
+      "state": "LOCAL",
+      "head": "52f0cb442cc5f655dbbe85f4a3ce7dfd58e352ba",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "rangoons1-news-platform",
+      "state": "LOCAL",
+      "head": "15f8c73b7929e5684c28f46cdc19306fe926cf97",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "shmry",
+      "state": "LOCAL",
+      "head": "4af8ea41daae17dfedbcfce08de435010e64bd68",
+      "capabilities": [
+        "cloud",
+        "storage",
+        "artifact"
+      ]
+    },
+    {
+      "name": "SHMRY_BUNKER",
+      "state": "LOCAL",
+      "head": "3d748385568e162dde87c05c6a3543df5d429b15",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "sophyane",
+      "state": "LOCAL",
+      "head": "b4c38d521d27faed19798c48c35b38393290b529",
+      "capabilities": [
+        "classify",
+        "plan",
+        "route",
+        "execute",
+        "coordinate",
+        "validate",
+        "repair"
+      ]
+    },
+    {
+      "name": "vps",
+      "state": "LOCAL",
+      "head": "e58860204336274d5f63842e4131475be01846d4",
+      "capabilities": [
+        "transport",
+        "tls",
+        "network"
+      ]
+    },
+    {
+      "name": "vps-pk.com",
+      "state": "LOCAL",
+      "head": "8632ead4ff06d98a231ef2ae737f22f50acd8891",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "xerus",
+      "state": "LOCAL",
+      "head": "3ec618477c42a4ead3d3e3635700c3fad6484972",
+      "capabilities": [
+        "memory",
+        "recall",
+        "durable_state"
+      ]
+    },
+    {
+      "name": "xerusrider",
+      "state": "LOCAL",
+      "head": "0ddf2a3debea680ff5dde002f013d4bf23e91ca4",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    },
+    {
+      "name": "xerusriderpartner",
+      "state": "LOCAL",
+      "head": "94eacb18a61b471c89ff61bbf6a6636bd3b54daf",
+      "capabilities": [
+        "application_or_domain_capability"
+      ]
+    }
+  ]
+}

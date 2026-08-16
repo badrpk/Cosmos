@@ -1,0 +1,8 @@
+[project]
+name = "shmry-cosmos"
+version = "0.1.0"
+description = "Control plane and dashboard for the Shmry 32-repository ecosystem"
+requires-python = ">=3.10"
+
+[project.scripts]
+cosmos = "cosmos.server:main"
