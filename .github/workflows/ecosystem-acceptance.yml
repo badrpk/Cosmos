@@ -1,0 +1,36 @@
+name: Cosmos ecosystem acceptance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cosmos/ecosystem_acceptance.py'
+      - 'tests/test_ecosystem_acceptance.py'
+      - '.github/workflows/ecosystem-acceptance.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'cosmos/ecosystem_acceptance.py'
+      - 'tests/test_ecosystem_acceptance.py'
+      - '.github/workflows/ecosystem-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test dependency
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Run ecosystem acceptance contract
+        run: python -m pytest -q tests/test_ecosystem_acceptance.py
