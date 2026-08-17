@@ -18,10 +18,14 @@ def test_visual_request_routes_correctly():
         "build website and visually verify screenshot"
     )
 
-    assert "sophyane" in route.repositories
     assert "vps" in route.repositories
     assert "nifdu" in route.repositories
     assert "xerus" in route.repositories
+
+    # Explicit deterministic capabilities should route
+    # directly to their canonical owners. Sophyane is
+    # reserved for semantic/ontology fallback.
+    assert "sophyane" not in route.repositories
 
 
 def test_memory_request_routes_xerus():
@@ -55,3 +59,51 @@ def test_engine_creates_task_directory():
         )
 
         assert engine.tasks.exists()
+
+
+def test_publish_routes_to_portis():
+    from cosmos.router import resolve
+
+    route = resolve(
+        "publish this website to production"
+    )
+
+    assert "Portis" in route.repositories
+    assert "deployment" in route.capabilities
+    assert "sophyane" not in route.repositories
+
+
+def test_vercel_routes_to_portis():
+    from cosmos.router import resolve
+
+    route = resolve(
+        "deploy this website through vercel"
+    )
+
+    assert "Portis" in route.repositories
+    assert "deployment" in route.capabilities
+
+
+def test_dns_provider_routes_to_portis():
+    from cosmos.router import resolve
+
+    for request in (
+        "configure my domain through godaddy",
+        "set dns through porkbun",
+        "host this through cloudflare",
+    ):
+        route = resolve(request)
+
+        assert "Portis" in route.repositories
+        assert "deployment" in route.capabilities
+
+
+def test_semantic_unknown_falls_back_to_sophyane():
+    from cosmos.router import resolve
+
+    route = resolve(
+        "make this smarter in the best possible way"
+    )
+
+    assert route.repositories == ("sophyane",)
+    assert route.capabilities == ("plan",)

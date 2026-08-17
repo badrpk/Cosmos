@@ -20,7 +20,11 @@ class CosmosEngine:
             exist_ok=True,
         )
 
-    def execute(self, request: str) -> dict[str, Any]:
+    def execute(
+        self,
+        request: str,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         task_id = uuid.uuid4().hex[:16]
 
         task_dir = self.tasks / task_id
@@ -56,6 +60,8 @@ class CosmosEngine:
                         "request": request,
                         "route":
                             list(route.repositories),
+                        "context":
+                            context or {},
                     },
                     task_dir,
                 )

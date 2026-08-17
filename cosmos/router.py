@@ -29,8 +29,8 @@ def resolve(request: str) -> Route:
 
     terms = _terms(request)
 
-    repos: list[str] = ["sophyane"]
-    caps: list[str] = ["plan"]
+    repos: list[str] = []
+    caps: list[str] = []
 
     def add(repo: str, capability: str) -> None:
         if repo not in repos:
@@ -38,6 +38,27 @@ def resolve(request: str) -> Route:
 
         if capability not in caps:
             caps.append(capability)
+
+    deployment_terms = {
+        "deploy",
+        "deployment",
+        "publish",
+        "published",
+        "host",
+        "hosting",
+        "vercel",
+        "netlify",
+        "cloudflare",
+        "godaddy",
+        "porkbun",
+        "domain",
+        "dns",
+        "production",
+        "live",
+    }
+
+    if terms & deployment_terms:
+        add("Portis", "deployment")
 
     if terms & {
         "remember",
@@ -96,6 +117,12 @@ def resolve(request: str) -> Route:
         "account",
     }:
         add("shmry", "artifact")
+
+    # Sophyane is the semantic/ontology fallback.
+    # Explicit deterministic requests should first go directly
+    # to the canonical capability owner.
+    if not repos:
+        add("sophyane", "plan")
 
     # State persistence is useful for any multi-component request.
     if len(repos) > 1:

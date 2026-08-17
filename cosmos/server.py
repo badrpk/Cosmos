@@ -204,8 +204,17 @@ class Handler(BaseHTTPRequestHandler):
             )
             return
 
+        context = payload.get(
+            "context",
+            {},
+        )
+
+        if not isinstance(context, dict):
+            context = {}
+
         result = ENGINE.execute(
-            request
+            request,
+            context=context,
         )
 
         self.send_json(
