@@ -51,20 +51,132 @@ class CosmosEngine:
             "status": "running",
         }
 
-        for repo in route.repositories:
+        execution_context = dict(
+            context or {}
+        )
+
+        provider_id = str(
+            execution_context.get(
+                "provider_id",
+                "",
+            )
+            or ""
+        ).strip() or None
+
+        # Specialists execute before Portis so their output can
+        # enrich the deployment context deterministically.
+        execution_order = [
+            repo
+            for repo in route.repositories
+            if repo != "Portis"
+        ]
+
+        if "Portis" in route.repositories:
+            execution_order.append("Portis")
+
+        for repo in execution_order:
             try:
-                result["results"][repo] = invoke(
+                payload = {
+                    "task_id": task_id,
+                    "request": request,
+                    "route":
+                        list(route.repositories),
+                    "context":
+                        execution_context,
+                }
+
+                if repo == "xerus":
+                    payload.update({
+                        "query": request,
+                        "namespace":
+                            execution_context.get(
+                                "memory_namespace",
+                                "deployment",
+                            ),
+                    })
+
+                elif repo == "Algora":
+                    payload.update({
+                        "selection_mode":
+                            _selection_mode(request),
+                        "required_tags":
+                            execution_context.get(
+                                "required_provider_tags",
+                                ["deployment"],
+                            ),
+                        "candidates":
+                            _provider_candidates(
+                                execution_context
+                            ),
+                    })
+
+                elif repo == "Codane":
+                    payload.update(
+                        _safe_change_payload(
+                            request,
+                            execution_context,
+                        )
+                    )
+
+                elif repo == "Portis":
+                    if provider_id:
+                        execution_context[
+                            "provider_id"
+                        ] = provider_id
+
+                        payload[
+                            "provider_id"
+                        ] = provider_id
+
+                peer_result = invoke(
                     repo,
-                    {
-                        "task_id": task_id,
-                        "request": request,
-                        "route":
-                            list(route.repositories),
-                        "context":
-                            context or {},
-                    },
+                    payload,
                     task_dir,
                 )
+
+                result["results"][repo] = (
+                    peer_result
+                )
+
+                if repo == "xerus":
+                    recalled = (
+                        _provider_from_xerus(
+                            peer_result
+                        )
+                    )
+
+                    if recalled:
+                        provider_id = recalled
+                        execution_context[
+                            "provider_id"
+                        ] = recalled
+
+                elif repo == "Algora":
+                    selected = str(
+                        peer_result.get(
+                            "selected",
+                            "",
+                        )
+                        or ""
+                    ).strip()
+
+                    if selected:
+                        provider_id = selected
+                        execution_context[
+                            "provider_id"
+                        ] = selected
+
+                elif repo == "Codane":
+                    if (
+                        peer_result.get("status")
+                        == "rejected"
+                    ):
+                        result["status"] = (
+                            "blocked"
+                        )
+
+                        break
+
             except Exception as exc:
                 result["errors"][repo] = {
                     "type":
@@ -92,3 +204,86 @@ class CosmosEngine:
         )
 
         return result
+
+
+def _provider_from_xerus(result: dict[str, Any]) -> str | None:
+    hits = list(result.get("hits") or [])
+
+    for hit in hits:
+        metadata = hit.get("metadata") or {}
+
+        provider = str(
+            metadata.get("provider_id") or ""
+        ).strip()
+
+        if provider:
+            return provider
+
+    return None
+
+
+def _selection_mode(request: str) -> str:
+    text = request.casefold()
+
+    if any(
+        term in text
+        for term in (
+            "cheapest",
+            "lowest cost",
+            "best value",
+            "affordable",
+        )
+    ):
+        return "cheapest"
+
+    if any(
+        term in text
+        for term in (
+            "fastest",
+            "lowest latency",
+        )
+    ):
+        return "fastest"
+
+    return "balanced"
+
+
+def _provider_candidates(
+    context: dict[str, Any],
+) -> list[dict[str, Any]]:
+    return list(
+        context.get("provider_candidates")
+        or context.get("providers")
+        or []
+    )
+
+
+def _safe_change_payload(
+    request: str,
+    context: dict[str, Any],
+) -> dict[str, Any]:
+    plan = dict(
+        context.get("safe_change_plan")
+        or {}
+    )
+
+    return {
+        "goal": (
+            plan.get("goal")
+            or request
+        ),
+        "changes": list(
+            plan.get("changes")
+            or context.get("changes")
+            or []
+        ),
+        "gates": list(
+            plan.get("gates")
+            or context.get("gates")
+            or []
+        ),
+        "notes": list(
+            plan.get("notes")
+            or []
+        ),
+    }

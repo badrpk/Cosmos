@@ -402,3 +402,270 @@ def test_codane_real_safe_change_validation(
     assert result["status"] == "ok"
     assert result["errors"] == []
     assert result["evidence_hash"]
+
+
+def test_engine_algora_selection_flows_to_portis(
+    monkeypatch,
+    tmp_path,
+):
+    import json
+
+    from cosmos.engine import CosmosEngine
+
+    algora_root = (
+        Path.home()
+        / "cosmos-specialist-contract-discovery"
+        / "repos"
+        / "Algora"
+    )
+
+    monkeypatch.setenv(
+        "COSMOS_ALGORA_ROOT",
+        str(algora_root),
+    )
+
+    portis_root = tmp_path / "portis"
+    portis_root.mkdir()
+
+    cli = portis_root / "portis_provider_cli.py"
+
+    cli.write_text(
+        """\
+import json
+import sys
+
+payload = json.load(sys.stdin)
+
+print(json.dumps({
+    "status": "ready",
+    "provider_id":
+        payload.get("provider_id"),
+    "missing_fields": [],
+}))
+""",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv(
+        "COSMOS_PORTIS_ROOT",
+        str(portis_root),
+    )
+
+    engine = CosmosEngine(
+        tmp_path / "state"
+    )
+
+    result = engine.execute(
+        (
+            "deploy this on the cheapest "
+            "suitable provider"
+        ),
+        context={
+            "product": "/tmp/site",
+            "provider_candidates": [
+                {
+                    "name": "vercel",
+                    "latency_ms": 40,
+                    "memory_mb": 128,
+                    "accuracy": 0.95,
+                    "cost": 20,
+                    "tags": [
+                        "deployment",
+                    ],
+                },
+                {
+                    "name": "cloudflare",
+                    "latency_ms": 25,
+                    "memory_mb": 128,
+                    "accuracy": 0.95,
+                    "cost": 10,
+                    "tags": [
+                        "deployment",
+                    ],
+                },
+            ],
+        },
+    )
+
+    assert (
+        result["results"]["Algora"][
+            "selected"
+        ]
+        == "cloudflare"
+    )
+
+    assert (
+        result["results"]["Portis"][
+            "provider_id"
+        ]
+        == "cloudflare"
+    )
+
+    assert (
+        result["results"]["Portis"][
+            "response"
+        ][
+            "provider_id"
+        ]
+        == "cloudflare"
+    )
+
+
+def test_engine_xerus_recall_flows_to_portis(
+    monkeypatch,
+    tmp_path,
+):
+    import sys
+
+    from cosmos.engine import CosmosEngine
+
+    xerus_root = (
+        Path.home()
+        / "cosmos-specialist-contract-discovery"
+        / "repos"
+        / "xerus"
+    )
+
+    monkeypatch.setenv(
+        "COSMOS_XERUS_ROOT",
+        str(xerus_root),
+    )
+
+    monkeypatch.setenv(
+        "XERUS_HOME",
+        str(tmp_path / "xerus-memory"),
+    )
+
+    sys.path.insert(
+        0,
+        str(xerus_root / "src"),
+    )
+
+    try:
+        from xerus.memory import remember
+
+        remember(
+            (
+                "usual hosting deployment "
+                "provider cloudflare"
+            ),
+            namespace="deployment",
+            memory_key="provider",
+            metadata={
+                "provider_id":
+                    "cloudflare",
+            },
+        )
+    finally:
+        sys.path.pop(0)
+
+    portis_root = tmp_path / "portis"
+    portis_root.mkdir()
+
+    (
+        portis_root
+        / "portis_provider_cli.py"
+    ).write_text(
+        """\
+import json
+import sys
+
+payload = json.load(sys.stdin)
+
+print(json.dumps({
+    "status": "ready",
+    "provider_id":
+        payload.get("provider_id"),
+    "missing_fields": [],
+}))
+""",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv(
+        "COSMOS_PORTIS_ROOT",
+        str(portis_root),
+    )
+
+    engine = CosmosEngine(
+        tmp_path / "state"
+    )
+
+    result = engine.execute(
+        "put this on my usual hosting",
+        context={
+            "product": "/tmp/site",
+        },
+    )
+
+    assert result["results"]["xerus"][
+        "hits"
+    ]
+
+    assert (
+        result["results"]["Portis"][
+            "provider_id"
+        ]
+        == "cloudflare"
+    )
+
+
+def test_engine_codane_rejection_blocks_portis(
+    monkeypatch,
+    tmp_path,
+):
+    import hashlib
+
+    from cosmos.engine import CosmosEngine
+
+    codane_root = (
+        Path.home()
+        / "cosmos-specialist-contract-discovery"
+        / "repos"
+        / "Codane"
+    )
+
+    monkeypatch.setenv(
+        "COSMOS_CODANE_ROOT",
+        str(codane_root),
+    )
+
+    engine = CosmosEngine(
+        tmp_path / "state"
+    )
+
+    source = "provider = 'cloudflare'\n"
+
+    result = engine.execute(
+        (
+            "deploy this but avoid changing "
+            "production config unless necessary"
+        ),
+        context={
+            "product": "/tmp/site",
+            "changes": [
+                {
+                    "path":
+                        "src/provider.py",
+                    "action":
+                        "update",
+                    "rationale":
+                        "provider change",
+                    "content_sha256":
+                        hashlib.sha256(
+                            source.encode()
+                        ).hexdigest(),
+                },
+            ],
+            "gates": [],
+        },
+    )
+
+    assert (
+        result["results"]["Codane"][
+            "status"
+        ]
+        == "rejected"
+    )
+
+    assert "Portis" not in result["results"]

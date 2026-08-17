@@ -208,19 +208,25 @@ def invoke_portis(
         payload.get("request", "")
     ).casefold()
 
-    provider = None
+    provider = str(
+        payload.get("provider_id")
+        or context.get("provider_id")
+        or ""
+    ).strip() or None
 
-    for candidate in (
-        "vercel",
-        "cloudflare",
-        "godaddy",
-        "porkbun",
-    ):
-        if candidate in request_text:
-            provider = candidate
-            break
+    if provider is None:
+        for candidate in (
+            "vercel",
+            "cloudflare",
+            "godaddy",
+            "porkbun",
+        ):
+            if candidate in request_text:
+                provider = candidate
+                break
 
-    # No provider guessing beyond explicit user intent.
+    # No provider guessing beyond explicit user intent or a
+    # provider deterministically resolved by a specialist.
     if provider is None:
         return {
             "repo": "Portis",
@@ -309,6 +315,12 @@ def invoke(
 
     if repo == "xerus":
         return invoke_xerus(payload)
+
+    if repo == "Algora":
+        return invoke_algora(payload)
+
+    if repo == "Codane":
+        return invoke_codane(payload)
 
     if repo == "HuobzLang":
         source = (
