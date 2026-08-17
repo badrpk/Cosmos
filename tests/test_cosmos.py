@@ -669,3 +669,31 @@ def test_engine_codane_rejection_blocks_portis(
     )
 
     assert "Portis" not in result["results"]
+
+
+def test_explicit_shmry_cloud_routes_to_shmry():
+    route = resolve(
+        "host this on shmry cloud"
+    )
+
+    assert "shmry" in route.repositories
+    assert "Portis" not in route.repositories
+    assert "deployment" in route.capabilities
+
+
+def test_explicit_shmry_publish_routes_to_shmry():
+    route = resolve(
+        "publish this on shmry"
+    )
+
+    assert "shmry" in route.repositories
+    assert "Portis" not in route.repositories
+
+
+def test_generic_hosting_keeps_portis_path():
+    route = resolve(
+        "host this website"
+    )
+
+    assert "Portis" in route.repositories
+    assert "shmry" not in route.repositories
