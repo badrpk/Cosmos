@@ -109,36 +109,76 @@ def test_semantic_unknown_falls_back_to_sophyane():
     assert route.capabilities == ("plan",)
 
 
+def _write_fake_portis_cli(root: Path) -> None:
+    cli = root / "portis_provider_cli.py"
+
+    cli.write_text(
+        """\
+import json
+import sys
+
+payload = json.load(sys.stdin)
+
+provider = payload.get("provider_id")
+action = payload.get("action")
+
+if action != "validate":
+    print(json.dumps({
+        "status": "error",
+        "error": "unsupported action",
+    }))
+    raise SystemExit(1)
+
+if provider == "vercel":
+    print(json.dumps({
+        "status": "needs_input",
+        "provider_id": "vercel",
+        "missing_fields": [
+            "credential_refs",
+            "credential:token",
+        ],
+    }))
+else:
+    print(json.dumps({
+        "status": "needs_input",
+        "provider_id": provider,
+        "missing_fields": ["provider_id"],
+    }))
+""",
+        encoding="utf-8",
+    )
+
+
 def test_portis_explicit_provider_resolution():
     import os
-    from pathlib import Path
 
     from cosmos.adapters import invoke_portis
 
-    root = Path.home() / "portis-provider-contract"
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_fake_portis_cli(root)
 
-    old = os.environ.get("COSMOS_PORTIS_ROOT")
+        old = os.environ.get("COSMOS_PORTIS_ROOT")
+        os.environ["COSMOS_PORTIS_ROOT"] = str(root)
 
-    os.environ["COSMOS_PORTIS_ROOT"] = str(root)
-
-    try:
-        result = invoke_portis({
-            "request":
-                "deploy this website through vercel",
-            "context": {
-                "product": "/tmp/site",
-            },
-        })
-    finally:
-        if old is None:
-            os.environ.pop(
-                "COSMOS_PORTIS_ROOT",
-                None,
-            )
-        else:
-            os.environ[
-                "COSMOS_PORTIS_ROOT"
-            ] = old
+        try:
+            result = invoke_portis({
+                "request":
+                    "deploy this website through vercel",
+                "context": {
+                    "product": "/tmp/site",
+                },
+            })
+        finally:
+            if old is None:
+                os.environ.pop(
+                    "COSMOS_PORTIS_ROOT",
+                    None,
+                )
+            else:
+                os.environ[
+                    "COSMOS_PORTIS_ROOT"
+                ] = old
 
     assert result["repo"] == "Portis"
     assert result["provider_id"] == "vercel"
@@ -151,15 +191,35 @@ def test_portis_explicit_provider_resolution():
 
 
 def test_portis_does_not_guess_provider():
+    import os
+
     from cosmos.adapters import invoke_portis
 
-    result = invoke_portis({
-        "request":
-            "publish this website",
-        "context": {
-            "product": "/tmp/site",
-        },
-    })
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_fake_portis_cli(root)
+
+        old = os.environ.get("COSMOS_PORTIS_ROOT")
+        os.environ["COSMOS_PORTIS_ROOT"] = str(root)
+
+        try:
+            result = invoke_portis({
+                "request":
+                    "publish this website",
+                "context": {
+                    "product": "/tmp/site",
+                },
+            })
+        finally:
+            if old is None:
+                os.environ.pop(
+                    "COSMOS_PORTIS_ROOT",
+                    None,
+                )
+            else:
+                os.environ[
+                    "COSMOS_PORTIS_ROOT"
+                ] = old
 
     assert result["status"] == "needs_input"
     assert result["missing_fields"] == [

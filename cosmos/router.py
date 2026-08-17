@@ -55,20 +55,144 @@ def resolve(request: str) -> Route:
         "dns",
         "production",
         "live",
+        "provider",
+        "cdn",
+        "delivery",
     }
 
     if terms & deployment_terms:
         add("Portis", "deployment")
 
-    if terms & {
+    # Deployment/session history belongs to Xerus.
+    # These deterministic phrases are stronger than generic
+    # semantic fallback because they explicitly refer to
+    # previously-used state.
+    memory_context_terms = {
         "remember",
         "memory",
         "recall",
         "history",
         "persist",
         "store",
-    }:
+        "usual",
+        "previous",
+        "previously",
+    }
+
+    same_context = (
+        "same" in terms
+        and bool(
+            terms
+            & {
+                "account",
+                "host",
+                "hosting",
+                "provider",
+                "domain",
+            }
+        )
+    )
+
+    last_context = (
+        "last" in terms
+        and "time" in terms
+    )
+
+    existing_context = (
+        bool(
+            terms
+            & {
+                "already",
+                "existing",
+                "current",
+            }
+        )
+        and bool(
+            terms
+            & {
+                "account",
+                "host",
+                "hosting",
+                "provider",
+                "domain",
+                "dns",
+                "managed",
+                "configured",
+            }
+        )
+    )
+
+    if (
+        terms & memory_context_terms
+        or same_context
+        or last_context
+        or existing_context
+    ):
         add("xerus", "memory")
+
+    # Provider ranking is an algorithm-selection problem.
+    # Algora owns deterministic comparison/selection rather
+    # than Sophyane or Cosmos inventing a provider choice.
+    provider_selection = (
+        bool(
+            terms
+            & {
+                "cheapest",
+                "lowest",
+                "cost",
+                "affordable",
+                "best",
+                "value",
+                "cdn",
+                "global",
+                "edge",
+            }
+        )
+        and bool(
+            terms
+            & (
+                deployment_terms
+                | {
+                    "provider",
+                    "delivery",
+                }
+            )
+        )
+    )
+
+    if provider_selection:
+        add("Algora", "provider_selection")
+
+    # Requests explicitly asking to minimize production/config
+    # change are safe-change planning work owned by Codane.
+    safe_change = (
+        bool(
+            terms
+            & {
+                "avoid",
+                "minimal",
+                "minimum",
+                "safest",
+                "safe",
+                "necessary",
+            }
+        )
+        and bool(
+            terms
+            & {
+                "change",
+                "changing",
+                "config",
+                "configuration",
+                "production",
+                "deploy",
+                "deployment",
+            }
+        )
+    )
+
+    if safe_change:
+        add("Codane", "safe_change_planning")
 
     if terms & {
         "compile",
