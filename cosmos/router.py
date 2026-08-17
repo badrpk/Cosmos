@@ -18,6 +18,29 @@ def _terms(text: str) -> set[str]:
     }
 
 
+
+# COSMOS_SHMRY_CLOUD_ROUTING_V1
+def _is_shmry_deployment_intent(request: str) -> bool:
+    text = request.strip().lower()
+
+    if "shmry" not in text:
+        return False
+
+    return any(
+        term in text
+        for term in (
+            "host",
+            "hosting",
+            "deploy",
+            "deployment",
+            "publish",
+            "release",
+            "put this on",
+            "put it on",
+        )
+    )
+
+
 def resolve(request: str) -> Route:
     """
     Lightweight Cosmos control-plane routing.
@@ -60,7 +83,10 @@ def resolve(request: str) -> Route:
         "delivery",
     }
 
-    if terms & deployment_terms:
+    if _is_shmry_deployment_intent(request):
+        add("shmry", "deployment")
+        add("shmry", "shmry_cloud")
+    elif terms & deployment_terms:
         add("Portis", "deployment")
 
     # Deployment/session history belongs to Xerus.

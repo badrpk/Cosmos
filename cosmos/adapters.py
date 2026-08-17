@@ -310,6 +310,12 @@ def invoke(
     task_dir: Path,
 ) -> dict[str, Any]:
 
+    if repo == "shmry":
+        return invoke_shmry(
+            str(payload.get("request") or ""),
+            payload.get("context") or {},
+        )
+
     if repo == "Portis":
         return invoke_portis(payload)
 
@@ -672,5 +678,122 @@ def invoke_codane(payload: dict) -> dict:
         "plan": plan.canonical(),
         "evidence_hash": (
             plan.evidence_hash()
+        ),
+    }
+
+
+def invoke_shmry(
+    request: str,
+    context: dict | None = None,
+    *,
+    shmry_root: str | None = None,
+):
+    import json
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    context = dict(
+        context or {}
+    )
+
+    root_value = (
+        shmry_root
+        or os.environ.get(
+            "COSMOS_SHMRY_ROOT"
+        )
+    )
+
+    if not root_value:
+        return {
+            "repo": "shmry",
+            "status": "unavailable",
+            "reason": (
+                "COSMOS_SHMRY_ROOT "
+                "is not configured"
+            ),
+        }
+
+    root = Path(
+        root_value
+    ).expanduser().resolve()
+
+    if not root.is_dir():
+        return {
+            "repo": "shmry",
+            "status": "unavailable",
+            "reason": (
+                f"Shmry root does not exist: {root}"
+            ),
+        }
+
+    artifact = (
+        context.get("product")
+        or context.get("artifact")
+    )
+
+    payload = {
+        "artifact": artifact,
+        "project_name": (
+            context.get("project_name")
+            or context.get("product_name")
+        ),
+        "environment": context.get(
+            "environment",
+            "production",
+        ),
+    }
+
+    env = os.environ.copy()
+
+    existing = env.get(
+        "PYTHONPATH",
+        "",
+    )
+
+    env["PYTHONPATH"] = (
+        str(root)
+        if not existing
+        else str(root)
+        + os.pathsep
+        + existing
+    )
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "shmry_platform.deployment_cli",
+        ],
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        cwd=root,
+        env=env,
+        timeout=30,
+        check=False,
+    )
+
+    try:
+        response = json.loads(
+            proc.stdout
+        )
+    except Exception:
+        response = {
+            "status": "error",
+            "stdout": proc.stdout,
+            "stderr": proc.stderr,
+        }
+
+    return {
+        "repo": "shmry",
+        "mode": "website-deployment-contract",
+        "provider_id": "shmry",
+        "response": response,
+        "status": (
+            "ok"
+            if proc.returncode == 0
+            else "error"
         ),
     }
