@@ -107,3 +107,61 @@ def test_semantic_unknown_falls_back_to_sophyane():
 
     assert route.repositories == ("sophyane",)
     assert route.capabilities == ("plan",)
+
+
+def test_portis_explicit_provider_resolution():
+    import os
+    from pathlib import Path
+
+    from cosmos.adapters import invoke_portis
+
+    root = Path.home() / "portis-provider-contract"
+
+    old = os.environ.get("COSMOS_PORTIS_ROOT")
+
+    os.environ["COSMOS_PORTIS_ROOT"] = str(root)
+
+    try:
+        result = invoke_portis({
+            "request":
+                "deploy this website through vercel",
+            "context": {
+                "product": "/tmp/site",
+            },
+        })
+    finally:
+        if old is None:
+            os.environ.pop(
+                "COSMOS_PORTIS_ROOT",
+                None,
+            )
+        else:
+            os.environ[
+                "COSMOS_PORTIS_ROOT"
+            ] = old
+
+    assert result["repo"] == "Portis"
+    assert result["provider_id"] == "vercel"
+
+    response = result["response"]
+
+    assert response["status"] == "needs_input"
+    assert "credential_refs" in response["missing_fields"]
+    assert "credential:token" in response["missing_fields"]
+
+
+def test_portis_does_not_guess_provider():
+    from cosmos.adapters import invoke_portis
+
+    result = invoke_portis({
+        "request":
+            "publish this website",
+        "context": {
+            "product": "/tmp/site",
+        },
+    })
+
+    assert result["status"] == "needs_input"
+    assert result["missing_fields"] == [
+        "provider_id",
+    ]

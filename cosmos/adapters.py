@@ -183,11 +183,129 @@ def invoke_huobzlang(
     }
 
 
+
+def invoke_portis(
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+
+    root = Path(
+        os.environ.get(
+            "COSMOS_PORTIS_ROOT",
+            str(repo_root("Portis")),
+        )
+    )
+
+    cli = root / "portis_provider_cli.py"
+
+    if not cli.exists():
+        raise PeerUnavailable(
+            f"Portis callable contract unavailable: {cli}"
+        )
+
+    context = payload.get("context") or {}
+
+    request_text = str(
+        payload.get("request", "")
+    ).casefold()
+
+    provider = None
+
+    for candidate in (
+        "vercel",
+        "cloudflare",
+        "godaddy",
+        "porkbun",
+    ):
+        if candidate in request_text:
+            provider = candidate
+            break
+
+    # No provider guessing beyond explicit user intent.
+    if provider is None:
+        return {
+            "repo": "Portis",
+            "mode": "provider-selection-required",
+            "status": "needs_input",
+            "missing_fields": [
+                "provider_id",
+            ],
+        }
+
+    artifact = (
+        context.get("product")
+        or context.get("artifact")
+        or ""
+    )
+
+    domain = context.get("domain")
+
+    credential_refs = dict(
+        context.get("credential_refs")
+        or {}
+    )
+
+    request = {
+        "action": "validate",
+        "provider_id": provider,
+        "artifact": artifact,
+        "environment": context.get(
+            "environment",
+            "production",
+        ),
+        "credential_refs": credential_refs,
+    }
+
+    if domain:
+        request["domain"] = domain
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(cli),
+        ],
+        input=json.dumps(request),
+        text=True,
+        capture_output=True,
+        cwd=str(root),
+        timeout=15,
+    )
+
+    try:
+        response = json.loads(
+            result.stdout
+        )
+    except Exception as exc:
+        raise AdapterError(
+            "Portis returned invalid JSON"
+        ) from exc
+
+    if result.returncode != 0:
+        raise AdapterError(
+            response.get(
+                "error",
+                {},
+            ).get(
+                "message",
+                "Portis invocation failed",
+            )
+        )
+
+    return {
+        "repo": "Portis",
+        "mode": "provider-contract",
+        "provider_id": provider,
+        "response": response,
+    }
+
+
 def invoke(
     repo: str,
     payload: dict[str, Any],
     task_dir: Path,
 ) -> dict[str, Any]:
+
+    if repo == "Portis":
+        return invoke_portis(payload)
 
     if repo == "xerus":
         return invoke_xerus(payload)
