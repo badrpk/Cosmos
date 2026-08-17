@@ -331,3 +331,334 @@ def invoke(
         "mode": "health-contract",
         "health": health(repo),
     }
+
+
+def _load_module_from_file(
+    module_name: str,
+    path: Path,
+):
+    """Load one specialist module without installing it globally."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        module_name,
+        path,
+    )
+
+    if spec is None or spec.loader is None:
+        raise RuntimeError(
+            f"cannot load specialist module: {path}"
+        )
+
+    module = importlib.util.module_from_spec(spec)
+
+    # Dataclasses and similar decorators resolve the defining
+    # module through sys.modules while class bodies execute.
+    # Register before exec_module(), just like normal import.
+    sys.modules[module_name] = module
+
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        sys.modules.pop(module_name, None)
+        raise
+
+    return module
+
+
+def invoke_algora(payload: dict) -> dict:
+    """
+    Ask Algora to rank deployment-provider candidates.
+
+    Cosmos supplies provider evidence; Algora performs the
+    deterministic selection. It does not invent provider facts.
+    """
+    import os
+
+    root = Path(
+        os.environ.get(
+            "COSMOS_ALGORA_ROOT",
+            Path.home() / "Algora",
+        )
+    )
+
+    module_path = root / "algora.py"
+
+    if not module_path.exists():
+        return {
+            "repo": "Algora",
+            "status": "unavailable",
+            "reason": "algora.py not found",
+        }
+
+    algora = _load_module_from_file(
+        "cosmos_external_algora",
+        module_path,
+    )
+
+    candidates = list(
+        payload.get("candidates") or []
+    )
+
+    if not candidates:
+        return {
+            "repo": "Algora",
+            "status": "needs_input",
+            "missing_fields": [
+                "candidates",
+            ],
+        }
+
+    selector = algora.Algora()
+
+    for item in candidates:
+        name = str(
+            item.get("name") or ""
+        ).strip()
+
+        if not name:
+            continue
+
+        benchmark = algora.Benchmark(
+            latency_ms=float(
+                item.get("latency_ms", 0)
+            ),
+            memory_mb=float(
+                item.get("memory_mb", 0)
+            ),
+            accuracy=float(
+                item.get("accuracy", 1.0)
+            ),
+            cost=float(
+                item.get("cost", 0)
+            ),
+        )
+
+        selector.register(
+            name,
+            lambda n=name: n,
+            benchmark,
+            tags=item.get("tags") or (),
+        )
+
+    mode = str(
+        payload.get("selection_mode")
+        or "balanced"
+    ).casefold()
+
+    if mode == "cheapest":
+        weights = algora.Weights(
+            latency=0,
+            memory=0,
+            accuracy=0,
+            cost=1,
+        )
+    elif mode in {"fastest", "latency"}:
+        weights = algora.Weights(
+            latency=1,
+            memory=0,
+            accuracy=0,
+            cost=0,
+        )
+    else:
+        weights = algora.Weights()
+
+    required_tags = tuple(
+        payload.get("required_tags") or ()
+    )
+
+    ranked = selector.rank(
+        algora.Constraints(),
+        weights=weights,
+        required_tags=required_tags,
+    )
+
+    if not ranked:
+        return {
+            "repo": "Algora",
+            "status": "needs_input",
+            "reason": (
+                "no candidate satisfies constraints"
+            ),
+        }
+
+    selected = ranked[0]["name"]
+
+    return {
+        "repo": "Algora",
+        "status": "ok",
+        "selected": selected,
+        "ranking": [
+            {
+                "name": row["name"],
+                "score": row["score"],
+            }
+            for row in ranked
+        ],
+    }
+
+
+def invoke_xerus(payload: dict) -> dict:
+    """
+    Recall deployment state from Xerus persistent memory.
+    """
+    import os
+    import sys
+
+    root = Path(
+        os.environ.get(
+            "COSMOS_XERUS_ROOT",
+            Path.home() / "xerus",
+        )
+    )
+
+    src = root / "src"
+
+    if not (src / "xerus" / "memory.py").exists():
+        return {
+            "repo": "xerus",
+            "status": "unavailable",
+            "reason": "xerus memory runtime not found",
+        }
+
+    old_path = list(sys.path)
+
+    try:
+        sys.path.insert(
+            0,
+            str(src),
+        )
+
+        from xerus.memory import recall
+
+        query = str(
+            payload.get("query")
+            or payload.get("request")
+            or ""
+        ).strip()
+
+        if not query:
+            return {
+                "repo": "xerus",
+                "status": "needs_input",
+                "missing_fields": [
+                    "query",
+                ],
+            }
+
+        hits = recall(
+            query,
+            namespace=payload.get(
+                "namespace",
+                "deployment",
+            ),
+            limit=int(
+                payload.get("limit", 8)
+            ),
+        )
+
+        return {
+            "repo": "xerus",
+            "status": "ok",
+            "hits": hits,
+        }
+
+    finally:
+        sys.path[:] = old_path
+
+
+def invoke_codane(payload: dict) -> dict:
+    """
+    Validate a proposed minimal/safe deployment change plan.
+    """
+    import os
+
+    root = Path(
+        os.environ.get(
+            "COSMOS_CODANE_ROOT",
+            Path.home() / "Codane",
+        )
+    )
+
+    module_path = root / "codane.py"
+
+    if not module_path.exists():
+        return {
+            "repo": "Codane",
+            "status": "unavailable",
+            "reason": "codane.py not found",
+        }
+
+    codane = _load_module_from_file(
+        "cosmos_external_codane",
+        module_path,
+    )
+
+    raw_changes = list(
+        payload.get("changes") or []
+    )
+
+    if not raw_changes:
+        return {
+            "repo": "Codane",
+            "status": "needs_input",
+            "missing_fields": [
+                "changes",
+            ],
+        }
+
+    changes = []
+
+    for item in raw_changes:
+        changes.append(
+            codane.FileChange(
+                path=item["path"],
+                action=item["action"],
+                rationale=item["rationale"],
+                content_sha256=item.get(
+                    "content_sha256"
+                ),
+            )
+        )
+
+    gates = []
+
+    for item in payload.get("gates") or []:
+        gates.append(
+            codane.ValidationGate(
+                name=item["name"],
+                command=item["command"],
+                required=bool(
+                    item.get(
+                        "required",
+                        True,
+                    )
+                ),
+            )
+        )
+
+    plan = codane.build_plan(
+        goal=str(
+            payload.get("goal")
+            or "Minimize deployment changes"
+        ),
+        changes=changes,
+        gates=gates,
+        notes=payload.get("notes") or (),
+    )
+
+    errors = codane.validate_plan(plan)
+
+    return {
+        "repo": "Codane",
+        "status": (
+            "ok"
+            if not errors
+            else "rejected"
+        ),
+        "errors": errors,
+        "plan": plan.canonical(),
+        "evidence_hash": (
+            plan.evidence_hash()
+        ),
+    }

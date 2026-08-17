@@ -225,3 +225,180 @@ def test_portis_does_not_guess_provider():
     assert result["missing_fields"] == [
         "provider_id",
     ]
+
+
+def test_algora_real_provider_selection(
+    monkeypatch,
+):
+    from cosmos.adapters import invoke_algora
+
+    monkeypatch.setenv(
+        "COSMOS_ALGORA_ROOT",
+        str(
+            Path.home()
+            / "cosmos-specialist-contract-discovery"
+            / "repos"
+            / "Algora"
+        ),
+    )
+
+    result = invoke_algora({
+        "selection_mode": "cheapest",
+        "required_tags": [
+            "deployment",
+        ],
+        "candidates": [
+            {
+                "name": "vercel",
+                "latency_ms": 40,
+                "memory_mb": 128,
+                "accuracy": 0.95,
+                "cost": 20,
+                "tags": [
+                    "deployment",
+                    "cdn",
+                ],
+            },
+            {
+                "name": "cloudflare",
+                "latency_ms": 25,
+                "memory_mb": 128,
+                "accuracy": 0.95,
+                "cost": 10,
+                "tags": [
+                    "deployment",
+                    "cdn",
+                ],
+            },
+        ],
+    })
+
+    assert result["status"] == "ok"
+    assert result["selected"] == "cloudflare"
+
+
+def test_xerus_real_previous_provider_recall(
+    monkeypatch,
+    tmp_path,
+):
+    import sys
+
+    from cosmos.adapters import invoke_xerus
+
+    root = (
+        Path.home()
+        / "cosmos-specialist-contract-discovery"
+        / "repos"
+        / "xerus"
+    )
+
+    monkeypatch.setenv(
+        "COSMOS_XERUS_ROOT",
+        str(root),
+    )
+
+    monkeypatch.setenv(
+        "XERUS_HOME",
+        str(tmp_path / "xerus-state"),
+    )
+
+    sys.path.insert(
+        0,
+        str(root / "src"),
+    )
+
+    try:
+        from xerus.memory import remember
+
+        remember(
+            (
+                "usual deployment provider "
+                "cloudflare account production"
+            ),
+            namespace="deployment",
+            memory_key="deployment-provider",
+            metadata={
+                "provider_id": "cloudflare",
+            },
+        )
+    finally:
+        sys.path.pop(0)
+
+    result = invoke_xerus({
+        "query": (
+            "usual deployment provider"
+        ),
+        "namespace": "deployment",
+    })
+
+    assert result["status"] == "ok"
+    assert result["hits"]
+    assert (
+        result["hits"][0]["metadata"][
+            "provider_id"
+        ]
+        == "cloudflare"
+    )
+
+
+def test_codane_real_safe_change_validation(
+    monkeypatch,
+):
+    import hashlib
+
+    from cosmos.adapters import invoke_codane
+
+    monkeypatch.setenv(
+        "COSMOS_CODANE_ROOT",
+        str(
+            Path.home()
+            / "cosmos-specialist-contract-discovery"
+            / "repos"
+            / "Codane"
+        ),
+    )
+
+    source = "provider = 'cloudflare'\n"
+    test_source = "def test_provider(): pass\n"
+
+    result = invoke_codane({
+        "goal": (
+            "Make minimum safe provider change"
+        ),
+        "changes": [
+            {
+                "path": "src/provider.py",
+                "action": "update",
+                "rationale": (
+                    "Change provider only"
+                ),
+                "content_sha256":
+                    hashlib.sha256(
+                        source.encode()
+                    ).hexdigest(),
+            },
+            {
+                "path": "tests/test_provider.py",
+                "action": "update",
+                "rationale": (
+                    "Validate provider change"
+                ),
+                "content_sha256":
+                    hashlib.sha256(
+                        test_source.encode()
+                    ).hexdigest(),
+            },
+        ],
+        "gates": [
+            {
+                "name": "tests",
+                "command":
+                    "python3 -m pytest -q",
+                "required": True,
+            },
+        ],
+    })
+
+    assert result["status"] == "ok"
+    assert result["errors"] == []
+    assert result["evidence_hash"]
